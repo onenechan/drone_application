@@ -5,77 +5,56 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 from std_msgs.msg import Int32, Float32
+from std_msgs.msg import String
+from std_msgs.msg import Empty
+from geometry_msgs.msg import Twist, Vector3
 
-aruco = cv2.aruco 
-dictionary = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
+G_get_redpos=320
 
-class ar_pick():
-    def __init__(self):
-        sub = rospy.Subscriber("/ardrone/front/image_raw",Image,self.get_image)
-        self.bridge = CvBridge()
-        self.image_org = None
-        self.pub = rospy.Publisher("arMakar",Image,queue_size=1)
-        self.x_posi_pub = rospy.Publisher("x_posi",Float32,queue_size=1)
-        self.y_posi_pub = rospy.Publisher("y_posi",Float32,queue_size=1)
+class control(object):
 
-    def monitor(self,org):
-       
-        self.pub.publish(self.bridge.cv2_to_imgmsg(org,"bgr8"))
+	def __init__(self):
+		self.pub = rospy.Publisher("ardrone/takeoff", Empty)
+		self.pub_velocity = rospy.Publisher('cmd_vel',Twist,queue_size=1)
+		self.get_redpos=rospy.Subscriber('posi',Int32,self.toGrobal_pos)
+		delta_xpos=0
 
-    def get_image(self,img):
-        try:
-            self.image_org = self.bridge.imgmsg_to_cv2(img,"bgr8")
-        except CvBridgeError as e:
-            rospy.logerr(e)
+	def takeoff(self):
+		
+		self.pub.publish(Empty())
+		rospy.sleep(5.0)
 
-    def arReader(self):
-        if self.image_org is None:
-            return None
-        frame = self.image_org
+	def toGrobal_pos(self, a):
+		global G_get_redpos
+		G_get_redpos = a.data
+		# to global
+		#be a data
 
-        Height, Width = frame.shape[:2] 
-        print(Height,Width)
+	def main(self):
+		if 320-G_get_redpos>10:
+			delta_xpos=1
+		elif 320-G_get_redpos<-10:
+			delta_xpos=-1
+		else:
+			delta_xpos=0
 
-        img = cv2.resize(frame,(int(Width),int(Height)))
+		print("G_get_redpos",G_get_redpos)
+		print("delta_xpos",delta_xpos)
 
-        corners, ids, rejectedImgPoints = aruco.detectMarkers(img, dictionary) 
 
-        square_points = np.reshape(np.array(corners), (4, -1))
-
-        point  = (square_points[0]+square_points[2])/2
-
-        aruco.drawDetectedMarkers(img, corners, ids, (0,255,0)) 
-
-        if len(point) > 0:
-            list(point)
-            
-            print type(point[0])
-            self.x_posi_pub.publish(point[0])
-            self.y_posi_pub.publish(point[1])
-
-        else:
-            self.x_posi_pub.publish(320)
-            self.y_posi_pub.publish(180)
-                
-            
-
-        
-
-        
-
-        self.monitor(img)
-
-        cv2.waitKey(1) 
+		self.pub_velocity.publish(Twist(Vector3(0,delta_xpos,0),Vector3(0,0,0)))
 
 
 if __name__=='__main__':
-    rospy.init_node('ar_pick')
+	rospy.init_node('moving_node',anonymous=True)
+	control=control()
 
+	
 
-    fd = ar_pick()
-
-    rate = rospy.Rate(100)
-    while not rospy.is_shutdown():
-        fd.arReader()#rosservice call /ardrone/togglecam 
-        rate.sleep()#rosrun image_view image_view image:=/arMakar
-
+	try:
+		control.takeoff()
+		while 1:
+			control.main()
+		
+	except rospy.ROSInterruptException:
+		pass
