@@ -7,12 +7,8 @@ import numpy as np
 from std_msgs.msg import Int32
 class Red:
     def __init__(self):
-        #HSV
-        self.lower = np.array([150, 10, 10])
+        self.lower = np.array([150, 50, 50])
         self.upper = np.array([180, 255, 255])
-        #RGB(GBR) 
-        self.gbrLower = np.array([20, 20, 135])
-        self.gbrUpper = np.array([50, 50, 160])
 
 class red_pick():
     def __init__(self):
@@ -35,11 +31,11 @@ class red_pick():
 
     def detectRectOfTargetColor(self,frame, colorObj):
 
-        #hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        #h = hsv[:, :, 0]
-        #s = hsv[:, :, 1]
-        #mask = np.zeros(h.shape, dtype=np.uint8)
-        mask = cv2.inRange(frame, colorObj.gbrLower, colorObj.gbrUpper)
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        h = hsv[:, :, 0]
+        s = hsv[:, :, 1]
+        mask = np.zeros(h.shape, dtype=np.uint8)
+        mask = cv2.inRange(hsv, colorObj.lower, colorObj.upper)
 
         image, contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -70,7 +66,6 @@ class red_pick():
             cv2.rectangle(frame, tuple(rect[0:2]), tuple(rect[0:2] + rect[2:4]), (0, 0, 255), thickness=2)
             cent = (rect[0:2]*2+rect[2:4])/2
             print(cent)
-            print(rect[2:4])
             self.posi_pub.publish(cent[0])
             
 
@@ -81,6 +76,10 @@ class red_pick():
         r =rects_red[0]
         self.monitor(r,frame)
         return r
+
+    
+
+  
 
 if __name__=='__main__':
     rospy.init_node('red_pick')

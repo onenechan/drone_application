@@ -10,6 +10,7 @@ from std_msgs.msg import Empty
 from geometry_msgs.msg import Twist, Vector3
 
 G_get_redpos=320
+Kp = 0.00025
 
 class control(object):
 
@@ -32,9 +33,9 @@ class control(object):
 
 	def main(self):
 		if 320-G_get_redpos>10:
-			delta_xpos=1
+			delta_xpos=0.1*(320-G_get_redpos)*Kp
 		elif 320-G_get_redpos<-10:
-			delta_xpos=-1
+			delta_xpos=-0.1*(320-G_get_redpos)*Kp
 		else:
 			delta_xpos=0
 
@@ -48,8 +49,6 @@ class control(object):
 if __name__=='__main__':
 	rospy.init_node('moving_node',anonymous=True)
 	control=control()
-
-	
 
 	try:
 		control.takeoff()
